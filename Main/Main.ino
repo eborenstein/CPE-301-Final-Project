@@ -9,9 +9,6 @@ volatile unsigned char* port_b = (unsigned char*) 0x25;
 volatile unsigned char* ddr_b  = (unsigned char*) 0x24; 
 volatile unsigned char* pin_b  = (unsigned char*) 0x23;
 
-
-
-
 void setup() {
   
   U0init(9600);
