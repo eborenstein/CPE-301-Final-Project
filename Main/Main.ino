@@ -1,3 +1,5 @@
+#define RDA 0x80
+#define TBE 0x20  
 volatile unsigned char *myUCSR0A = (unsigned char *)0x00C0;
 volatile unsigned char *myUCSR0B = (unsigned char *)0x00C1;
 volatile unsigned char *myUCSR0C = (unsigned char *)0x00C2;
@@ -8,14 +10,111 @@ volatile unsigned char *myUDR0   = (unsigned char *)0x00C6;
 volatile unsigned char* port_b = (unsigned char*) 0x25; 
 volatile unsigned char* ddr_b  = (unsigned char*) 0x24; 
 volatile unsigned char* pin_b  = (unsigned char*) 0x23;
+// port e 3
+volatile unsigned char* port_e = (unsigned char*) 0x2E; 
+volatile unsigned char* ddr_e  = (unsigned char*) 0x2D; 
+volatile unsigned char* pin_e  = (unsigned char*) 0x2C;
 
+
+volatile unsigned char* port_h = (unsigned char*) 0x102;
+volatile unsigned char* ddr_h  = (unsigned char*) 0x101; 
+volatile unsigned char* pin_h  = (unsigned char*) 0x100;
+// d6 step left in - PH3
+// d7 step right in - PH4
+// d8 fan stop (disable) - PH5
 void setup() {
   
   U0init(9600);
+		*ddr_e |= 0b00001000; //fan motor
+  *ddr_h &= 0b11110111; //step right input button
+  *ddr_h &= 0b11101111; //step left input button
+  *ddr_h &= 0b11011111; //fan stop button (disable)
+  *port_h |= 0b00001000; //step right input button set pull high
+  *port_h |= 0b00010000; //step left input button set pull high
+  *port_h |= 0b00100000; //fan stop button pull high
+  //I am aware that by default these pins should be input and pull high, but I figure it's best to actually declare it. 
+  //Should also help when looking back at the code. I know right, me, writing code and comments for the future? Ridiculous! -Kyle
 }
-
+//vars
+unsigned int temperatureThreshold = 70; //edit once I actually look at how the temp sensor works 
+unsigned int waterThreshold = 10; //same w/ water
+unsigned int state = 0; 
+unsigned int temperature = 0; //declaring here. May move once monitoring is added.
+unsigned int water = 0; //again
 void loop() {
-  
+ //Realtime clock output time of state changes needed.  
+if (state == 0){ //disabled
+    led_set(0);
+    //fanset(false); //move later to only be on state change? - Done, vestigal
+  }
+
+  if (state == 1){ //idle
+    led_set(1);
+    //fanset(false);
+    if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
+    //set step left here (will return to after I acttually look at the library - Kyle)
+    }
+    if (*pin_h & 0b00010000){
+    //step right here - Maybe could'a put this into a function. /shrug
+    }
+    if (*pin_h & 0b00100000){ //if off button is pressed
+      state = 0;
+      fanset(false);
+    }
+    if(water <= waterThreshold){
+      state = 2;
+      fanset(false);
+    }
+    //need water monitoring
+    if(temperature >= temperatureThreshold){
+      state = 3;
+      fanset(true);
+    }
+  }
+
+  if (state == 2){ //error
+    led_set(2);
+    //fanset(false);
+    if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
+    //set step left here (will return to after I acttually look at the library - Kyle)
+    }
+    if (*pin_h & 0b00010000){
+    //step right here
+    }
+    if (*pin_h & 0b00100000){//if off button is pressed
+      state = 0;
+      fanset(false);
+    }
+    //if (water >= water) - The doc says "a reset button should trigger a change to the IDLE stage if water level is above threshold"
+    //I *assume* this means the actual resent button. Which as I understand, reloads the entire program. Which means this check should be unnecesairy, as everything is reinitalized - Kyle
+
+    //LCD output error
+  }
+
+  if (state == 3){ //running
+    led_set(3);
+    //fanset(true); //may need to edit this later to only hapen on state change, lest the log get spammed
+    if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
+    //set step left here (will return to after I acttually look at the library - Kyle)
+    }
+    if (*pin_h & 0b00010000){
+    //step right here
+    }
+    if (*pin_h & 0b00100000){//if off button is pressed
+      state = 0;
+      fanset(false);
+    }
+    if(temperature <= temperatureThreshold){
+      state = 1; //goto idle  - hmm, now I kinda want to use gotos, but I think that's disaprooved of in C?
+      fanset(false);
+    }
+    if(water <= waterThreshold){
+      state = 2;
+      fanset(false);
+    }
+    //Need water monitoring
+  }
+
 
 }
 
@@ -79,4 +178,31 @@ void U0putchar(unsigned char U0pdata)
 {
   while((*myUCSR0A & TBE)==0);
   *myUDR0 = U0pdata;
+}
+void fanset(bool a)
+{
+  if (a)
+  {
+    U0putchar('o');
+    U0putchar('n');
+    //need Real time clock time output still
+    *port_e |= 0b00001000;
+  } else {
+    U0putchar('o');
+    U0putchar('f');
+    U0putchar('f');
+    *port_e &= 0b11110111;
+  }
+}
+
+void led_set(int led){
+  switch (led)
+  case (0): { //led 0 set for Disabled state
+    //D47 |= 1; //Digital 47 = Yellow
+    //D49 &= 0; //Digtal 49 = Blue
+    //D51 &= 0; //Digital 51 = Red
+    //D53 &= 0l //Digital 53 = Green
+
+
+  }
 }
