@@ -21,3 +21,6 @@ fan control is D5
 button to D6 is step motor left
 button to D7 is step motor right
 button to D8 is fan stop
+
+
+The Real time clock is a physical thing. It shall have SDA on A4 and SCL on A5.
