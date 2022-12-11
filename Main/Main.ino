@@ -1,5 +1,9 @@
-#define RDA 0x80
-#define TBE 0x20  
+#include <RTClib.h>
+
+ #define RDA 0x80
+ #define TBE 0x20  
+
+
 volatile unsigned char *myUCSR0A = (unsigned char *)0x00C0;
 volatile unsigned char *myUCSR0B = (unsigned char *)0x00C1;
 volatile unsigned char *myUCSR0C = (unsigned char *)0x00C2;
@@ -27,10 +31,11 @@ volatile unsigned char* port_l = (unsigned char*) 0x10B;
 volatile unsigned char* ddr_l  = (unsigned char*) 0x10A;
 volatile unsigned char* pin_l  = (unsigned char*) 0x109;
 
+RTC_DS1307 rtc;
 void setup() {
   
   U0init(9600);
-	*ddr_e |= 0b00001000; //fan motor
+  *ddr_e |= 0b00001000; //fan motor
   *ddr_h &= 0b11110111; //step right input button
   *ddr_h &= 0b11101111; //step left input button
   *ddr_h &= 0b11011111; //fan stop button (disable)
@@ -43,6 +48,8 @@ void setup() {
   *ddr_l |= 0b00000001; //Blue LED
   *ddr_b |= 0b00000100; //Red LED
   *ddr_b |= 0b00000001; //Green LED
+
+  RTC_init();
 }
 //vars
 unsigned int temperatureThreshold = 70; //edit once I actually look at how the temp sensor works 
@@ -50,9 +57,12 @@ unsigned int waterThreshold = 10; //same w/ water
 unsigned int state = 0; 
 unsigned int temperature = 0; //declaring here. May move once monitoring is added.
 unsigned int water = 0; //again
+DateTime now = rtc.now();
 void loop() {
- //Realtime clock output time of state changes needed.  
-if (state == 0){ //disabled
+  
+  
+
+  if (state == 0){ //disabled
     led_set(0);
     //fanset(false); //move later to only be on state change? - Done, vestigal
   }
@@ -62,9 +72,11 @@ if (state == 0){ //disabled
     //fanset(false);
     if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
     //set step left here (will return to after I acttually look at the library - Kyle)
+    Vent_moved();
     }
     if (*pin_h & 0b00010000){
     //step right here - Maybe could'a put this into a function. /shrug
+    Vent_moved();
     }
     if (*pin_h & 0b00100000){ //if off button is pressed
       state = 0;
@@ -86,9 +98,11 @@ if (state == 0){ //disabled
     //fanset(false);
     if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
     //set step left here (will return to after I acttually look at the library - Kyle)
+    Vent_moved();
     }
     if (*pin_h & 0b00010000){
     //step right here
+    Vent_moved();
     }
     if (*pin_h & 0b00100000){//if off button is pressed
       state = 0;
@@ -105,9 +119,11 @@ if (state == 0){ //disabled
     //fanset(true); //may need to edit this later to only hapen on state change, lest the log get spammed
     if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
     //set step left here (will return to after I acttually look at the library - Kyle)
+    Vent_moved();
     }
     if (*pin_h & 0b00010000){
     //step right here
+    Vent_moved();
     }
     if (*pin_h & 0b00100000){//if off button is pressed
       state = 0;
@@ -188,13 +204,15 @@ void U0putchar(unsigned char U0pdata)
   while((*myUCSR0A & TBE)==0);
   *myUDR0 = U0pdata;
 }
+
 void fanset(bool a)
 {
+  
   if (a)
   {
     U0putchar('o');
     U0putchar('n');
-    //need Real time clock time output still
+    
     *port_e |= 0b00001000;
   } else {
     U0putchar('o');
@@ -202,6 +220,7 @@ void fanset(bool a)
     U0putchar('f');
     *port_e &= 0b11110111;
   }
+  put_time();
 }
 
 void led_set(int led){
@@ -234,7 +253,51 @@ void led_set(int led){
       *port_b &= 0b11111011; 
       *port_b &= 0b11111110;
       break;
-
-
+    
   }
+}
+
+void RTC_init(){//checks if RTC connected, sets time
+  if(!rtc.begin()){//as far as I can tell, rtc.begin automagically finds what pin the RTC is connected to. Returns false if can't find RTC - Kyle
+    U0putchar('n');
+    U0putchar('o');
+    U0putchar('R');
+    U0putchar('T');
+    U0putchar('C');
+  }
+  rtc.adjust(DateTime(F(__DATE__),F(__TIME__)));//sets date & time from sketch compile. Ripped from arduino RTC tutorial - Kyle
+}
+
+void put_time(){//split into it's own function when I considered that it's needed for both the fan motor and step motor
+  now = rtc.now();
+  U0putchar(' ');
+  U0putchar('-');
+  U0putchar(' ');
+  print_int(now.year());
+  U0putchar('/');
+  print_int(now.month());
+  U0putchar('/');
+  print_int(now.day());
+  U0putchar(' ')
+  print_int(now.hour());
+  U0putchar(':');
+  print_int(now.minute());
+  U0putchar(':');
+  print_int(now.second());
+
+}
+
+void Vent_moved(){
+  U0putchar('V');
+  U0putchar('e');
+  U0putchar('n');
+  U0putchar('t');
+  U0putchar(' ');
+  U0putchar('m');
+  U0putchar('o');
+  U0putchar('v');
+  U0putchar('e');
+  U0putchar('d');
+  put_time();
+  U0putchar('\n');
 }
