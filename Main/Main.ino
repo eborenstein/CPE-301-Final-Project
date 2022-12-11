@@ -22,10 +22,15 @@ volatile unsigned char* pin_h  = (unsigned char*) 0x100;
 // d6 step left in - PH3
 // d7 step right in - PH4
 // d8 fan stop (disable) - PH5
+
+volatile unsigned char* port_l = (unsigned char*) 0x10B;
+volatile unsigned char* ddr_l = (unsigned char*) 0x10A;
+volatile unsigned char* pin_l = (unsigned char*) 0x109;
+
 void setup() {
   
   U0init(9600);
-		*ddr_e |= 0b00001000; //fan motor
+	*ddr_e |= 0b00001000; //fan motor
   *ddr_h &= 0b11110111; //step right input button
   *ddr_h &= 0b11101111; //step left input button
   *ddr_h &= 0b11011111; //fan stop button (disable)
@@ -34,6 +39,10 @@ void setup() {
   *port_h |= 0b00100000; //fan stop button pull high
   //I am aware that by default these pins should be input and pull high, but I figure it's best to actually declare it. 
   //Should also help when looking back at the code. I know right, me, writing code and comments for the future? Ridiculous! -Kyle
+  *ddr_l |= 0b00000100; //Yellow LED
+  *ddr_l |= 0b00000001; //Blue LED
+  *ddr_b |= 0b00000100; //Red LED
+  *ddr_b |= 0b00000001; //Green LED
 }
 //vars
 unsigned int temperatureThreshold = 70; //edit once I actually look at how the temp sensor works 
@@ -196,12 +205,35 @@ void fanset(bool a)
 }
 
 void led_set(int led){
-  switch (led)
-  case (0): { //led 0 set for Disabled state
-    //D47 |= 1; //Digital 47 = Yellow
-    //D49 &= 0; //Digtal 49 = Blue
-    //D51 &= 0; //Digital 51 = Red
-    //D53 &= 0l //Digital 53 = Green
+  switch (led){
+    case 0:  //led 0 set for Disabled state
+
+      *port_l |= 0b00000100; //D47 |= 1; //Digital 47 = Yellow   PL2
+      *port_l &= 0b11111110; //D49 &= 0; //Digtal 49 = Blue      PL0
+      *port_b &= 0b11111011; //D51 &= 0; //Digital 51 = Red      PB2
+      *port_b &= 0b11111110; //D53 &= 0; //Digital 53 = Green    PB0
+      break;
+    
+    case 1: //idle
+      *port_l &= 0b11111011; 
+      *port_l &= 0b11111110; 
+      *port_b &= 0b11111011; 
+      *port_b |= 0b00000001;
+      break;
+    
+    case 2: //error
+      *port_l &= 0b11111011; 
+      *port_l &= 0b11111110; 
+      *port_b |= 0b00000100; 
+      *port_b &= 0b11111110;
+      break;
+    
+    case 3: //running
+      *port_l &= 0b11111011; 
+      *port_l &= 0b00000001; 
+      *port_b |= 0b11111011; 
+      *port_b &= 0b11111110;
+      break;
 
 
   }
