@@ -24,8 +24,8 @@ volatile unsigned char* pin_h  = (unsigned char*) 0x100;
 // d8 fan stop (disable) - PH5
 
 volatile unsigned char* port_l = (unsigned char*) 0x10B;
-volatile unsigned char* ddr_l = (unsigned char*) 0x10A;
-volatile unsigned char* pin_l = (unsigned char*) 0x109;
+volatile unsigned char* ddr_l  = (unsigned char*) 0x10A;
+volatile unsigned char* pin_l  = (unsigned char*) 0x109;
 
 void setup() {
   
@@ -230,8 +230,8 @@ void led_set(int led){
     
     case 3: //running
       *port_l &= 0b11111011; 
-      *port_l &= 0b00000001; 
-      *port_b |= 0b11111011; 
+      *port_l |= 0b00000001; 
+      *port_b &= 0b11111011; 
       *port_b &= 0b11111110;
       break;
 
