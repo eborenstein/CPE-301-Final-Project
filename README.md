@@ -24,3 +24,12 @@ button to D8 is fan stop
 
 
 The Real time clock is a physical thing. It shall have SDA on A4 and SCL on A5.
+
+
+Will need L293D H bridge
+
+
+D23 L293D 1A (1Y = pink step)
+D25 2A (2Y = Orange)
+D27 3A (3Y = yellow)
+D29 4A (4Y = Blue)
