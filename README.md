@@ -33,3 +33,5 @@ D23 L293D 1A (1Y = pink step)
 D25 2A (2Y = Orange)
 D27 3A (3Y = yellow)
 D29 4A (4Y = Blue)
+
+D21 (SCL) = External interupt request (exit disable)
