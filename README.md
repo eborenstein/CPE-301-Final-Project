@@ -35,3 +35,9 @@ D27 3A (3Y = yellow)
 D29 4A (4Y = Blue)
 
 D21 (SCL) = External interupt request (exit disable)
+
+Libraries:
+Adafruit LiquidCrystal by Adafruit
+DHT sensor library by Adafruit
+RTClib by Adafruit
+Stepper by Arduinio
