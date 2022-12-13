@@ -34,6 +34,12 @@ volatile unsigned char* port_l = (unsigned char*) 0x10B;
 volatile unsigned char* ddr_l  = (unsigned char*) 0x10A;
 volatile unsigned char* pin_l  = (unsigned char*) 0x109;
 
+//Analog to Digital for Water sensor
+volatile unsigned char* my_ADMUX = (unsigned char*) 0x7C;
+volatile unsigned char* my_ADCSRB = (unsigned char*) 0x7B;
+volatile unsigned char* my_ADCSRA = (unsigned char*) 0x7A;
+volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;
+
 RTC_DS1307 rtc;
 DHT dht(A0, DHT11);
 void setup() {
@@ -54,13 +60,14 @@ void setup() {
   *ddr_b |= 0b00000001; //Green LED
 
   RTC_init();
+  adc_init();
 }
 //vars
 unsigned int temperatureThreshold = 23; //Note - is in C
 unsigned int waterThreshold = 10; //same w/ water
 unsigned int state = 0; 
 //unsigned int temperature = 0; //declaring here. May move once monitoring is added.
-unsigned int water = 0; //again
+//unsigned int water = adc_read(0); //inital water reading. Maybe should just be set high initally? Actually, I'll just call adc_read(0) in the ifs
 DateTime now = rtc.now();
 void loop() {
   
@@ -87,11 +94,11 @@ void loop() {
       state = 0;
       fanset(false);
     }
-    if(water <= waterThreshold){
+    if(adc_read(0) <= waterThreshold){
       state = 2;
       fanset(false);
     }
-    //need water monitoring
+    
     if(dht.readTemperature() >= temperatureThreshold){
       state = 3;
       fanset(true);
@@ -138,11 +145,11 @@ void loop() {
       state = 1; //goto idle  - hmm, now I kinda want to use gotos, but I think that's disaprooved of in C?
       fanset(false);
     }
-    if(water <= waterThreshold){
+    if(adc_read(0) <= waterThreshold){
       state = 2;
       fanset(false);
     }
-    //Need water monitoring
+    
   }
 
 
@@ -305,4 +312,46 @@ void Vent_moved(){
   U0putchar('d');
   put_time();
   U0putchar('\n');
+}
+
+void adc_init() //grabbed from lab 8. Because we have Analog 0 being the water sensor, we actually want all the MUX channel selection bits as 0 anyway
+{ //(ADCB bit 3 and ADMUX bits 4-0 should be 0)
+  // setup the A register
+  *my_ADCSRA |= 0b10000000; // set bit   7 to 1 to enable the ADC
+  *my_ADCSRA &= 0b11011111; // clear bit 5 to 0 to disable the ADC trigger mode
+  *my_ADCSRA &= 0b11101111; // clear bit 4 to 0 to disable the ADC interrupt
+  *my_ADCSRA &= 0b11111000; // clear bit 2-0 to 0 to set prescaler selection to slow reading
+  // setup the B register
+  *my_ADCSRB &= 0b11110111; // clear bit 3 to 0 to reset the channel and gain bits
+  *my_ADCSRB &= 0b11111000; // clear bit 2-0 to 0 to set free running mode
+  // setup the MUX Register
+  *my_ADMUX  &= 0b01111111; // clear bit 7 to 0 for AVCC analog reference
+  *my_ADMUX  |= 0b01000000; // set bit   6 to 1 for AVCC analog reference
+  *my_ADMUX  &= 0b11011111; // clear bit 5 to 0 for right adjust result
+  //*my_ADMUX  &=  // clear bit 5 to 0 for right adjust result
+  *my_ADMUX  &= 0b11100000; // clear bit 4-0 to 0 to reset the channel and gain bits
+}
+
+unsigned int adc_read(unsigned char adc_channel_num) // also ripped from lab 8. Thinking about it, I'm pretty certain that I could make it only use channel 0 anyway, but... Eh.
+{ //It's not like anyone else in the group is going to read this, anyway. - Kyle
+  // clear the channel selection bits (MUX 4:0)
+  *my_ADMUX  &= 0b11100000;
+  // clear the channel selection bits (MUX 5)
+  *my_ADCSRB &= 0b11110111;
+  // set the channel number
+  if(adc_channel_num > 7)
+  {
+    // set the channel selection bits, but remove the most significant bit (bit 3)
+    adc_channel_num -= 8;
+    // set MUX bit 5
+    *my_ADCSRB |= 0b00001000;
+  }
+  // set the channel selection bits
+  *my_ADMUX  += adc_channel_num;
+  // set bit 6 of ADCSRA to 1 to start a conversion
+  *my_ADCSRA |= 0x40;
+  // wait for the conversion to complete
+  while((*my_ADCSRA & 0x40) != 0);
+  // return the result in the ADC data register
+  return *my_ADC_DATA;
 }
