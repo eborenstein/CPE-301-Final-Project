@@ -1,3 +1,5 @@
+#include <Adafruit_LiquidCrystal.h>
+
 #include <DHT.h>
 #include <DHT_U.h>
 
@@ -42,6 +44,14 @@ volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;
 
 RTC_DS1307 rtc;
 DHT dht(A0, DHT11);
+Adafruit_LiquidCrystal lcd(46,42,32,30,28,26);
+//Digital 46 = LCD RS
+//Digital 42 = Enable
+//Digital 26 = D7
+//28 = D6
+//30 = D5
+//32 = D4
+//Seems we only need 4 data pins for the library?
 void setup() {
   
   U0init(9600);
@@ -61,14 +71,19 @@ void setup() {
 
   RTC_init();
   adc_init();
+  lcd.begin(16,2);
+  lcd.display();
+  lcd.clear();
+
 }
 //vars
 unsigned int temperatureThreshold = 23; //Note - is in C
-unsigned int waterThreshold = 10; //same w/ water
+unsigned int waterThreshold = 0; //Will definately need to be calibrated.
 unsigned int state = 0; 
 //unsigned int temperature = 0; //declaring here. May move once monitoring is added.
 //unsigned int water = adc_read(0); //inital water reading. Maybe should just be set high initally? Actually, I'll just call adc_read(0) in the ifs
 DateTime now = rtc.now();
+unsigned int minute = now.minute();
 void loop() {
   
   
@@ -80,6 +95,7 @@ void loop() {
   }
 
   if (state == 1){ //idle
+    now = rtc.now();
     led_set(1);
     //fanset(false);
     if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
@@ -103,6 +119,13 @@ void loop() {
       state = 3;
       fanset(true);
     }
+    if (minute != now.minute()){
+      lcd.clear();
+      lcd.print(adc_read(0));
+      lcd.print('\n');
+      lcd.print(dht.readTemperature());
+      minute = now.minute();
+    }
   }
 
   if (state == 2){ //error
@@ -124,9 +147,11 @@ void loop() {
     //I *assume* this means the actual resent button. Which as I understand, reloads the entire program. Which means this check should be unnecesairy, as everything is reinitalized - Kyle
 
     //LCD output error
+    lcd.print("Water level is too low");
   }
 
   if (state == 3){ //running
+    now = rtc.now();
     led_set(3);
     //fanset(true); //may need to edit this later to only hapen on state change, lest the log get spammed
     if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
@@ -149,7 +174,13 @@ void loop() {
       state = 2;
       fanset(false);
     }
-    
+    if (minute != now.minute()){
+      lcd.clear();
+      lcd.print(adc_read(0));
+      lcd.print('\n');
+      lcd.print(dht.readTemperature());
+      minute = now.minute();
+    }
   }
 
 
