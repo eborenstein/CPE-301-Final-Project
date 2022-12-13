@@ -49,6 +49,10 @@ volatile unsigned char* my_ADCSRB = (unsigned char*) 0x7B;
 volatile unsigned char* my_ADCSRA = (unsigned char*) 0x7A;
 volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;
 
+
+//Interupt request
+volatile unsigned char* my_EIMSK = (unsigned char*) 0x3D;
+
 RTC_DS1307 rtc;
 DHT dht(A0, DHT11);
 Adafruit_LiquidCrystal lcd(46,42,32,30,28,26);
@@ -88,11 +92,13 @@ void setup() {
   lcd.clear();
 
   stepper.setSpeed(20);
+
+  
 }
 //vars
 unsigned int temperatureThreshold = 23; //Note - is in Cel
 unsigned int waterThreshold = 0; //Will definately need to be calibrated.
-unsigned int state = 0; 
+volatile unsigned int state = 0; 
 //unsigned int temperature = 0; //declaring here. May move once monitoring is added.
 //unsigned int water = adc_read(0); //inital water reading. Maybe should just be set high initally? Actually, I'll just call adc_read(0) in the ifs
 DateTime now = rtc.now();
@@ -105,6 +111,7 @@ void loop() {
   if (state == 0){ //disabled
     led_set(0);
     //fanset(false); //move later to only be on state change? - Done, vestigal
+    *my_EIMSK |= 0b00000001;//when in disabled state, enable interupt
   }
 
   if (state == 1){ //idle
@@ -207,6 +214,11 @@ void loop() {
 
 }
 
+
+ISR(INT0_vect){//external interupt request
+  state = 1;
+  *my_EIMSK &= 0b11111110; //when disabled state exit, disable interupt
+}
 
 void print_int(unsigned int out_num)
 {
