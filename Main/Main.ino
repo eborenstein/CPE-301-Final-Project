@@ -1,3 +1,5 @@
+#include <Stepper.h>
+
 #include <Adafruit_LiquidCrystal.h>
 
 #include <DHT.h>
@@ -15,6 +17,11 @@ volatile unsigned char *myUCSR0C = (unsigned char *)0x00C2;
 volatile unsigned int  *myUBRR0  = (unsigned int *) 0x00C4;
 volatile unsigned char *myUDR0   = (unsigned char *)0x00C6;
  
+//port A for step motor
+//volatile unsigned char* port_a = (unsigned char*) 0x22; 
+//volatile unsigned char* ddr_a  = (unsigned char*) 0x21; 
+//volatile unsigned char* pin_a  = (unsigned char*) 0x20;
+//Though maybe this doesn't need to be declared since using library.
 
 volatile unsigned char* port_b = (unsigned char*) 0x25; 
 volatile unsigned char* ddr_b  = (unsigned char*) 0x24; 
@@ -52,6 +59,11 @@ Adafruit_LiquidCrystal lcd(46,42,32,30,28,26);
 //30 = D5
 //32 = D4
 //Seems we only need 4 data pins for the library?
+
+//from readme
+//D23 L293D 1A (1Y = pink step) D25 2A (2Y = Orange) D27 3A (3Y = yellow) D29 4A (4Y = Blue)
+
+Stepper stepper(64,23, 25, 27, 29);
 void setup() {
   
   U0init(9600);
@@ -75,9 +87,10 @@ void setup() {
   lcd.display();
   lcd.clear();
 
+  stepper.setSpeed(20);
 }
 //vars
-unsigned int temperatureThreshold = 23; //Note - is in C
+unsigned int temperatureThreshold = 23; //Note - is in Cel
 unsigned int waterThreshold = 0; //Will definately need to be calibrated.
 unsigned int state = 0; 
 //unsigned int temperature = 0; //declaring here. May move once monitoring is added.
@@ -99,12 +112,16 @@ void loop() {
     led_set(1);
     //fanset(false);
     if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
-    //set step left here (will return to after I acttually look at the library - Kyle)
+    //set step left here
+
+    stepper.step(-20);
     Vent_moved();
     }
     if (*pin_h & 0b00010000){
     //step right here - Maybe could'a put this into a function. /shrug
+    stepper.step(20);
     Vent_moved();
+    
     }
     if (*pin_h & 0b00100000){ //if off button is pressed
       state = 0;
@@ -132,11 +149,13 @@ void loop() {
     led_set(2);
     //fanset(false);
     if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
-    //set step left here (will return to after I acttually look at the library - Kyle)
+    //set step left here
+    stepper.step(-20);
     Vent_moved();
     }
     if (*pin_h & 0b00010000){
     //step right here
+    stepper.step(20);
     Vent_moved();
     }
     if (*pin_h & 0b00100000){//if off button is pressed
@@ -155,11 +174,13 @@ void loop() {
     led_set(3);
     //fanset(true); //may need to edit this later to only hapen on state change, lest the log get spammed
     if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
-    //set step left here (will return to after I acttually look at the library - Kyle)
+    //set step left here
+    stepper.step(-20);
     Vent_moved();
     }
     if (*pin_h & 0b00010000){
     //step right here
+    stepper.step(20);
     Vent_moved();
     }
     if (*pin_h & 0b00100000){//if off button is pressed
