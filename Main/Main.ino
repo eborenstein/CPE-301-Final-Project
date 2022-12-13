@@ -1,3 +1,6 @@
+#include <DHT.h>
+#include <DHT_U.h>
+
 #include <RTClib.h>
 
  #define RDA 0x80
@@ -32,6 +35,7 @@ volatile unsigned char* ddr_l  = (unsigned char*) 0x10A;
 volatile unsigned char* pin_l  = (unsigned char*) 0x109;
 
 RTC_DS1307 rtc;
+DHT dht(A0, DHT11);
 void setup() {
   
   U0init(9600);
@@ -52,13 +56,14 @@ void setup() {
   RTC_init();
 }
 //vars
-unsigned int temperatureThreshold = 70; //edit once I actually look at how the temp sensor works 
+unsigned int temperatureThreshold = 23; //Note - is in C
 unsigned int waterThreshold = 10; //same w/ water
 unsigned int state = 0; 
-unsigned int temperature = 0; //declaring here. May move once monitoring is added.
+//unsigned int temperature = 0; //declaring here. May move once monitoring is added.
 unsigned int water = 0; //again
 DateTime now = rtc.now();
 void loop() {
+  
   
   
 
@@ -87,7 +92,7 @@ void loop() {
       fanset(false);
     }
     //need water monitoring
-    if(temperature >= temperatureThreshold){
+    if(dht.readTemperature() >= temperatureThreshold){
       state = 3;
       fanset(true);
     }
@@ -129,7 +134,7 @@ void loop() {
       state = 0;
       fanset(false);
     }
-    if(temperature <= temperatureThreshold){
+    if(dht.readTemperature() <= temperatureThreshold){
       state = 1; //goto idle  - hmm, now I kinda want to use gotos, but I think that's disaprooved of in C?
       fanset(false);
     }
@@ -278,7 +283,7 @@ void put_time(){//split into it's own function when I considered that it's neede
   print_int(now.month());
   U0putchar('/');
   print_int(now.day());
-  U0putchar(' ')
+  U0putchar(' ');
   print_int(now.hour());
   U0putchar(':');
   print_int(now.minute());
