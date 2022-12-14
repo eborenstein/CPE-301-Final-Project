@@ -17,7 +17,7 @@ A1 is humidity/temp sensor
 23 is step motor blue
 29 is step motor orange
 other two in between 
-fan control is D5
+fan control is D5, will use a transistor
 button to D6 is step motor left
 button to D7 is step motor right
 button to D8 is fan stop
@@ -37,7 +37,7 @@ D29 4A (4Y = Blue)
 D21 (SCL) = External interupt request (exit disable)
 
 Libraries:
-Adafruit LiquidCrystal by Adafruit
+LiquidCrystal by Adafruit and Arduino
 DHT sensor library by Adafruit
 RTClib by Adafruit
 Stepper by Arduinio
