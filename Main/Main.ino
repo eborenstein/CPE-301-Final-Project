@@ -3,7 +3,7 @@
 #include <LiquidCrystal.h>
 
 #include <Stepper.h>
-
+//Inputting libraries
 
 #include <DHT.h>
 #include <DHT_U.h>
@@ -102,7 +102,7 @@ void setup() {
   lcd.clear();
 
   stepper.setSpeed(30);
-
+//setting speed of motor
   
 }
 //vars
@@ -379,7 +379,7 @@ void led_set(int led){
       *port_b &= 0b11111011; 
       *port_b &= 0b11111110;
       break;
-    
+    //setting states with LEDs
   }
 }
 
