@@ -154,7 +154,7 @@ void loop() {
       lcd.clear();
       lcd.setCursor(0,1);
       lcd.print("Water low");
-    }
+    }//setting print at below water threshold
     //print_int(analogRead(0));
     //print_int(adc_read(0));
     //print_int(dht.readTemperature());
@@ -242,6 +242,7 @@ void loop() {
       lcd.setCursor(0, 1);
       lcd.print(dht.readTemperature());
     }
+   //lcd prints temperature
     if(adc_read(0) <= waterThreshold){
       state = 2;
       fanset(false);
@@ -429,7 +430,7 @@ void Vent_moved(){
   //put_time();
   U0putchar('\n');
 }
-
+//outputting message "vent moved" on button pressed
 void adc_init() //grabbed from lab 8. Because we have Analog 0 being the water sensor, we actually want all the MUX channel selection bits as 0 anyway
 { //(ADCB bit 3 and ADMUX bits 4-0 should be 0)
   // setup the A register
