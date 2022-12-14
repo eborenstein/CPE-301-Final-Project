@@ -1,11 +1,14 @@
+#include <Wire.h>
+
+#include <LiquidCrystal.h>
+
 #include <Stepper.h>
 
-#include <Adafruit_LiquidCrystal.h>
 
 #include <DHT.h>
 #include <DHT_U.h>
 
-#include <RTClib.h>
+#include "RTClib.h"
 
  #define RDA 0x80
  #define TBE 0x20  
@@ -54,8 +57,8 @@ volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;
 volatile unsigned char* my_EIMSK = (unsigned char*) 0x3D;
 
 RTC_DS1307 rtc;
-DHT dht(A0, DHT11);
-Adafruit_LiquidCrystal lcd(46,42,32,30,28,26);
+DHT dht(A1, DHT11);
+LiquidCrystal lcd(46,42,32,30,28,26);
 //Digital 46 = LCD RS
 //Digital 42 = Enable
 //Digital 26 = D7
@@ -69,146 +72,191 @@ Adafruit_LiquidCrystal lcd(46,42,32,30,28,26);
 
 Stepper stepper(64,23, 25, 27, 29);
 void setup() {
-  
+  pinMode(47,OUTPUT);
+  digitalWrite(47,HIGH);
   U0init(9600);
+  //Serial.begin(9600);
   *ddr_e |= 0b00001000; //fan motor
   *ddr_h &= 0b11110111; //step right input button
   *ddr_h &= 0b11101111; //step left input button
   *ddr_h &= 0b11011111; //fan stop button (disable)
+  *ddr_h &= 0b10111111; //reset in
   *port_h |= 0b00001000; //step right input button set pull high
   *port_h |= 0b00010000; //step left input button set pull high
   *port_h |= 0b00100000; //fan stop button pull high
+  *port_h |= 0b01000000; //reset
   //I am aware that by default these pins should be input and pull high, but I figure it's best to actually declare it. 
   //Should also help when looking back at the code. I know right, me, writing code and comments for the future? Ridiculous! -Kyle
   *ddr_l |= 0b00000100; //Yellow LED
   *ddr_l |= 0b00000001; //Blue LED
   *ddr_b |= 0b00000100; //Red LED
   *ddr_b |= 0b00000001; //Green LED
+  //*port_l = 0b00000100;
 
-  RTC_init();
+  //U0putchar("i");
+  //Serial.print("test");
+  //RTC_init();
   adc_init();
   lcd.begin(16,2);
   lcd.display();
   lcd.clear();
 
-  stepper.setSpeed(20);
+  stepper.setSpeed(30);
 
   
 }
 //vars
-unsigned int temperatureThreshold = 23; //Note - is in Cel
-unsigned int waterThreshold = 0; //Will definately need to be calibrated.
-volatile unsigned int state = 0; 
+unsigned int temperatureThreshold = 10; //Note - is in Cel
+unsigned int waterThreshold = 225; //Will definately need to be calibrated.
+volatile unsigned int state = 1; 
 //unsigned int temperature = 0; //declaring here. May move once monitoring is added.
 //unsigned int water = adc_read(0); //inital water reading. Maybe should just be set high initally? Actually, I'll just call adc_read(0) in the ifs
-DateTime now = rtc.now();
-unsigned int minute = now.minute();
+
+unsigned int minute = 0;
 void loop() {
-  
-  
+  //DateTime now = rtc.now();
+  //Serial.println("l");
+
   
 
   if (state == 0){ //disabled
+    
     led_set(0);
     //fanset(false); //move later to only be on state change? - Done, vestigal
     *my_EIMSK |= 0b00000001;//when in disabled state, enable interupt
   }
 
   if (state == 1){ //idle
-    now = rtc.now();
+    //now = rtc.now();
     led_set(1);
     //fanset(false);
-    if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
+    if (*pin_h & 0b00001000){ } else{//'vent' movement. Happens everywhere but Disabled
     //set step left here
 
-    stepper.step(-20);
+    stepper.step(-40);
     Vent_moved();
+    //U0putchar('l');
     }
-    if (*pin_h & 0b00010000){
+    if (*pin_h & 0b00010000){ }else{
     //step right here - Maybe could'a put this into a function. /shrug
-    stepper.step(20);
+    stepper.step(40);
     Vent_moved();
+    //U0putchar('r');
     
     }
-    if (*pin_h & 0b00100000){ //if off button is pressed
+    if (*pin_h & 0b00100000){ }else{//if off button is pressed
       state = 0;
       fanset(false);
     }
     if(adc_read(0) <= waterThreshold){
       state = 2;
       fanset(false);
+      lcd.clear();
+      lcd.setCursor(0,1);
+      lcd.print("Water low");
     }
-    
+    //print_int(analogRead(0));
+    //print_int(adc_read(0));
+    //print_int(dht.readTemperature());
     if(dht.readTemperature() >= temperatureThreshold){
       state = 3;
       fanset(true);
-    }
-    if (minute != now.minute()){
       lcd.clear();
       lcd.print(adc_read(0));
-      lcd.print('\n');
+      //lcd.print('\n');
+      lcd.setCursor(0, 1);
       lcd.print(dht.readTemperature());
-      minute = now.minute();
     }
+    //if (minute != now.minute()){
+      //lcd.clear();
+      //lcd.print(adc_read(0));
+      //lcd.setCursor(0, 1);
+      //lcd.print(dht.readTemperature());
+      //minute = now.minute();
+    //}//
   }
 
   if (state == 2){ //error
     led_set(2);
     //fanset(false);
-    if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
+    //U0putchar('E');
+    //print_int(adc_read(0));
+    if (*pin_h & 0b00001000){ }else{//'vent' movement. Happens everywhere but Disabled
     //set step left here
-    stepper.step(-20);
+    stepper.step(-40);
     Vent_moved();
     }
-    if (*pin_h & 0b00010000){
+    if (*pin_h & 0b00010000){}else{
     //step right here
-    stepper.step(20);
+    stepper.step(40);
     Vent_moved();
     }
-    if (*pin_h & 0b00100000){//if off button is pressed
+    if (*pin_h & 0b00100000){}else{//if off button is pressed
       state = 0;
       fanset(false);
     }
-    //if (water >= water) - The doc says "a reset button should trigger a change to the IDLE stage if water level is above threshold"
+    if (adc_read(0) >= waterThreshold){
+      
+      if(*pin_h & 0b01000000){ }else{
+        
+        state = 1;
+        lcd.clear();
+        lcd.print(adc_read(0));
+      //lcd.print('\n');
+        lcd.setCursor(0, 1);
+        lcd.print(dht.readTemperature());
+      }
+    } //- The doc says "a reset button should trigger a change to the IDLE stage if water level is above threshold"
     //I *assume* this means the actual resent button. Which as I understand, reloads the entire program. Which means this check should be unnecesairy, as everything is reinitalized - Kyle
 
-    //LCD output error
-    lcd.print("Water level is too low");
+    //LCD output error (moved to state change)
+    
   }
 
   if (state == 3){ //running
-    now = rtc.now();
+    //now = rtc.now();
     led_set(3);
+
+    
     //fanset(true); //may need to edit this later to only hapen on state change, lest the log get spammed
-    if (*pin_h & 0b00001000){ //'vent' movement. Happens everywhere but Disabled
+    if (*pin_h & 0b00001000){ }else{//'vent' movement. Happens everywhere but Disabled
     //set step left here
-    stepper.step(-20);
+    stepper.step(-40);
     Vent_moved();
     }
-    if (*pin_h & 0b00010000){
+    if (*pin_h & 0b00010000){}else{
     //step right here
-    stepper.step(20);
+    stepper.step(40);
     Vent_moved();
     }
-    if (*pin_h & 0b00100000){//if off button is pressed
+    if (*pin_h & 0b00100000){}else{//if off button is pressed
       state = 0;
       fanset(false);
     }
     if(dht.readTemperature() <= temperatureThreshold){
       state = 1; //goto idle  - hmm, now I kinda want to use gotos, but I think that's disaprooved of in C?
       fanset(false);
+      lcd.clear();
+      lcd.print(adc_read(0));
+      //lcd.print('\n');
+      lcd.setCursor(0, 1);
+      lcd.print(dht.readTemperature());
     }
     if(adc_read(0) <= waterThreshold){
       state = 2;
       fanset(false);
-    }
-    if (minute != now.minute()){
       lcd.clear();
-      lcd.print(adc_read(0));
-      lcd.print('\n');
-      lcd.print(dht.readTemperature());
-      minute = now.minute();
+      lcd.setCursor(0,1);
+      lcd.print("Water low");
     }
+    //if (minute != now.minute()){
+      //lcd.clear();
+      //lcd.print(adc_read(0));
+      //lcd.print('\n');
+      //lcd.setCursor(0, 1);
+      //lcd.print(dht.readTemperature());
+      //minute = now.minute();
+    //}
   }
 
 
@@ -288,15 +336,17 @@ void fanset(bool a)
   {
     U0putchar('o');
     U0putchar('n');
+    U0putchar('\n');
     
     *port_e |= 0b00001000;
   } else {
     U0putchar('o');
     U0putchar('f');
     U0putchar('f');
+    U0putchar('\n');
     *port_e &= 0b11110111;
   }
-  put_time();
+  //put_time();
 }
 
 void led_set(int led){
@@ -334,32 +384,34 @@ void led_set(int led){
 }
 
 void RTC_init(){//checks if RTC connected, sets time
-  if(!rtc.begin()){//as far as I can tell, rtc.begin automagically finds what pin the RTC is connected to. Returns false if can't find RTC - Kyle
+  //rtc.begin();
+  //if(! rtc.isrunning()){//as far as I can tell, rtc.begin automagically finds what pin the RTC is connected to. Returns false if can't find RTC - Kyle
     U0putchar('n');
     U0putchar('o');
     U0putchar('R');
     U0putchar('T');
     U0putchar('C');
-  }
-  rtc.adjust(DateTime(F(__DATE__),F(__TIME__)));//sets date & time from sketch compile. Ripped from arduino RTC tutorial - Kyle
+  //}
+  //rtc.adjust(DateTime(F(__DATE__),F(__TIME__)));//sets date & time from sketch compile. Ripped from arduino RTC tutorial - Kyle
+  
 }
 
 void put_time(){//split into it's own function when I considered that it's needed for both the fan motor and step motor
-  now = rtc.now();
+  //DateTime now2 = rtc.now();
   U0putchar(' ');
   U0putchar('-');
   U0putchar(' ');
-  print_int(now.year());
+  //print_int(now2.year());
   U0putchar('/');
-  print_int(now.month());
+  //print_int(now2.month());
   U0putchar('/');
-  print_int(now.day());
+  //print_int(now2.day());
   U0putchar(' ');
-  print_int(now.hour());
+  //print_int(now2.hour());
   U0putchar(':');
-  print_int(now.minute());
+  //print_int(now2.minute());
   U0putchar(':');
-  print_int(now.second());
+  //print_int(now2.second());
 
 }
 
@@ -374,7 +426,7 @@ void Vent_moved(){
   U0putchar('v');
   U0putchar('e');
   U0putchar('d');
-  put_time();
+  //put_time();
   U0putchar('\n');
 }
 
@@ -385,6 +437,7 @@ void adc_init() //grabbed from lab 8. Because we have Analog 0 being the water s
   *my_ADCSRA &= 0b11011111; // clear bit 5 to 0 to disable the ADC trigger mode
   *my_ADCSRA &= 0b11101111; // clear bit 4 to 0 to disable the ADC interrupt
   *my_ADCSRA &= 0b11111000; // clear bit 2-0 to 0 to set prescaler selection to slow reading
+  *my_ADCSRA |= 0b00000111;
   // setup the B register
   *my_ADCSRB &= 0b11110111; // clear bit 3 to 0 to reset the channel and gain bits
   *my_ADCSRB &= 0b11111000; // clear bit 2-0 to 0 to set free running mode
@@ -393,6 +446,7 @@ void adc_init() //grabbed from lab 8. Because we have Analog 0 being the water s
   *my_ADMUX  |= 0b01000000; // set bit   6 to 1 for AVCC analog reference
   *my_ADMUX  &= 0b11011111; // clear bit 5 to 0 for right adjust result
   //*my_ADMUX  &=  // clear bit 5 to 0 for right adjust result
+  //*my_ADMUX  |= 0b00100000;
   *my_ADMUX  &= 0b11100000; // clear bit 4-0 to 0 to reset the channel and gain bits
 }
 
