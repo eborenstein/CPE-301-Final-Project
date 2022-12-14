@@ -2,7 +2,7 @@
 
 Project Notes:
 
-Eylon Borenstein, Kyle Hedin contributed to this
+Eylon Borenstein, Kyle Hedin, Gianluca Hunt contributed to this
 
 states: 
 Green LED: D53- water level is at threshold (not running but on)
